@@ -14,7 +14,7 @@ Canvas :: struct {
 	pixels:   []u8,
 }
 
-draw_pixel :: proc(canvas: ^Canvas, x: uint, y: uint, color: [3]u8) {
+canvas_draw_pixel :: proc(canvas: ^Canvas, x: uint, y: uint, color: [3]u8) {
 	if x >= canvas.width || y >= canvas.height {
 		return
 	}
@@ -25,43 +25,38 @@ draw_pixel :: proc(canvas: ^Canvas, x: uint, y: uint, color: [3]u8) {
 	canvas.pixels[idx + 2] = color.b
 }
 
-fill_canvas :: proc(canvas: ^Canvas, color: [3]u8) {
+canvas_fill :: proc(canvas: ^Canvas, color: [3]u8) {
 	for y: uint = 0; y < canvas.height; y += 1 {
 		for x: uint = 0; x < canvas.width; x += 1 {
-			draw_pixel(canvas, x, y, color)
+			canvas_draw_pixel(canvas, x, y, color)
 		}
 	}
+
+}
+canvas_init :: proc(canvas: ^Canvas, width: uint, height: uint, channels: uint, color: [3]u8 = {255, 255, 255}) {
+    total_bytes := width * height * channels
+    
+    canvas.width    = width
+    canvas.height   = height
+    canvas.channels = channels
+    canvas.pixels   = make([]u8, total_bytes)
+    
+    canvas_fill(canvas, color)
 }
 
-init_canvas :: proc(width: uint, height: uint, channels: uint, color: [3]u8 = {255, 255, 255}) -> Canvas {
-	total_bytes := width * height * channels
-	pixels := make([]u8, total_bytes)
-	
-	canvas := Canvas{
-		width    = width,
-		height   = height,
-		channels = channels,
-		pixels   = pixels,
-	}
-	
-	fill_canvas(&canvas, color)
-	
-	return canvas
-}
-
-deinit_canvas :: proc(canvas: ^Canvas) {
+canvas_deinit :: proc(canvas: ^Canvas) {
 	delete(canvas.pixels)
 	canvas.pixels = nil
 }
 
-draw_rectangle :: proc(canvas: ^Canvas, position: [2]uint, size: [2]uint, color: [3]u8) {
+canvas_draw_rectangle :: proc(canvas: ^Canvas, position: [2]uint, size: [2]uint, color: [3]u8) {
 	if position.x + size.x > canvas.width || position.y + size.y > canvas.height {
 		return
 	}
 	
 	for y: uint = position.y; y < position.y + size.y; y += 1 {
 		for x: uint = position.x; x < position.x + size.x; x += 1 {
-			draw_pixel(canvas, x, y, color)
+			canvas_draw_pixel(canvas, x, y, color)
 		}
 	}
 }
@@ -105,7 +100,7 @@ Cli_Args :: struct {
 	output: string `usage:"Output filename (e.g. 'my_identicon.jpg')"`,
 }
 
-generate_identicon :: proc(input: string, output_filename: string) -> bool {
+identicon_generate :: proc(input: string, output_filename: string) -> bool {
 	WIDTH :: 420
 	HEIGHT :: 420
 	MARGIN :: 35
@@ -115,8 +110,9 @@ generate_identicon :: proc(input: string, output_filename: string) -> bool {
 	color := hash_to_color(hash)
 	grid := hash_to_identicon(hash)
 	
-	canvas := init_canvas(WIDTH, HEIGHT, 3, {255, 255, 255})
-	defer deinit_canvas(&canvas)
+	canvas : Canvas
+	canvas_init(&canvas, WIDTH, HEIGHT, 3, {255, 255, 255})
+	defer canvas_deinit(&canvas)
 	
 	for row: uint = 0; row < 5; row += 1 {
 		for col: uint = 0; col < 5; col += 1 {
@@ -126,7 +122,7 @@ generate_identicon :: proc(input: string, output_filename: string) -> bool {
 					MARGIN + row * CELL_SIZE,
 				}
 				size := [2]uint{CELL_SIZE, CELL_SIZE}
-				draw_rectangle(&canvas, pos, size, color)
+				canvas_draw_rectangle(&canvas, pos, size, color)
 			}
 		}
 	}
@@ -160,7 +156,7 @@ main :: proc() {
 	}
 	
 	fmt.printfln("Generating identicon for: %s -> %s", args.input, output_filename)
-	if generate_identicon(args.input, output_filename) {
+	if identicon_generate(args.input, output_filename) {
 		fmt.println("  Success!")
 	} else {
 		fmt.eprintln("  Error generating the image.")
