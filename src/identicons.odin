@@ -137,24 +137,39 @@ identicon_generate :: proc(input: string, output_filename: string) -> bool {
 	return success != 0
 }
 
+print_usage :: proc() {
+	fmt.println("identicos - generate an identicon from a piece of text")
+	fmt.println()
+	fmt.println("Usage:")
+	fmt.println("  identicos <input> [-output:<file>]")
+	fmt.println()
+	fmt.println("Arguments:")
+	fmt.println("  input           Text or name to generate the identicon from (required)")
+	fmt.println("  -output:<file>  Output filename (e.g. 'my_identicon.jpg')")
+	fmt.println()
+	fmt.println("Example:")
+	fmt.println("  identicos alice -output:alice.jpg")
+}
+
 main :: proc() {
+	for arg in os.args[1:] {
+		if arg == "-help" || arg == "-h" {
+			print_usage()
+			os.exit(0)
+		}
+	}
+
 	args: Cli_Args
-	
 	if parse_err := flags.parse(&args, os.args[1:]); parse_err != nil {
-		fmt.eprintln("Error parsing arguments:", parse_err)
+		print_usage()
 		os.exit(1)
 	}
-	
-	if args.input == "" {
-		fmt.eprintln("Error: The 'input' argument is required.")
-		os.exit(1)
-	}
-	
+
 	output_filename := args.output
 	if output_filename == "" {
 		output_filename = fmt.tprintf("%s_identicon.jpg", args.input)
 	}
-	
+
 	fmt.printfln("Generating identicon for: %s -> %s", args.input, output_filename)
 	if identicon_generate(args.input, output_filename) {
 		fmt.println("  Success!")
